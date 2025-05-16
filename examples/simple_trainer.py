@@ -1,3 +1,15 @@
+# Installation:
+# conda create --name gs python=3.13.2
+# conda activate gs
+# pip install torch torchvision
+# pip install git+https://github.com/nerfstudio-project/gsplat.git
+# git clone --recursive https://github.com/nerfstudio-project/gsplat.git
+# pip install -r gsplat/examples/requirements.txt
+# cd gsplat/examples
+# python datasets/download_dataset.py
+# -- Disable fused ssim --
+# CUDA_VISIBLE_DEVICES=0 python simple_trainer.py default --data_dir data/360_v2/garden/ --data_factor 4 --result_dir ./results/garden
+
 import json
 import math
 import os
@@ -21,7 +33,7 @@ from datasets.traj import (
     generate_interpolated_path,
     generate_spiral_path,
 )
-from fused_ssim import fused_ssim
+# from fused_ssim import fused_ssim
 from lib_bilagrid import BilateralGrid, color_correct, slice, total_variation_loss
 from torch import Tensor
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -674,10 +686,10 @@ class Runner:
 
             # loss
             l1loss = F.l1_loss(colors, pixels)
-            ssimloss = 1.0 - fused_ssim(
-                colors.permute(0, 3, 1, 2), pixels.permute(0, 3, 1, 2), padding="valid"
-            )
-            loss = l1loss * (1.0 - cfg.ssim_lambda) + ssimloss * cfg.ssim_lambda
+            # ssimloss = 1.0 - fused_ssim(colors.permute(0, 3, 1, 2), pixels.permute(0, 3, 1, 2), padding="valid")
+            # loss = l1loss * (1.0 - cfg.ssim_lambda) + ssimloss * cfg.ssim_lambda
+            loss = l1loss * (1.0 - cfg.ssim_lambda)
+            
             if cfg.depth_loss:
                 # query depths from depth map
                 points = torch.stack(
@@ -738,7 +750,7 @@ class Runner:
                 mem = torch.cuda.max_memory_allocated() / 1024**3
                 self.writer.add_scalar("train/loss", loss.item(), step)
                 self.writer.add_scalar("train/l1loss", l1loss.item(), step)
-                self.writer.add_scalar("train/ssimloss", ssimloss.item(), step)
+                # self.writer.add_scalar("train/ssimloss", ssimloss.item(), step)
                 self.writer.add_scalar("train/num_GS", len(self.splats["means"]), step)
                 self.writer.add_scalar("train/mem", mem, step)
                 if cfg.depth_loss:
